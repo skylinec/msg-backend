@@ -10,7 +10,7 @@ import time
 from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler
 
-if __name__ == "__main__": # pattern matcher
+if __name__ == "__main__":  # pattern matcher
     patterns = ["*"]
     ignore_patterns = None
     ignore_directories = True
@@ -23,9 +23,11 @@ go_recursively = True
 my_observer = Observer()
 my_observer.schedule(my_event_handler, path, recursive=go_recursively)
 
+
 def on_created(event):
     print(f"hey, {event.src_path} has been created!")
     scanner()
+
 
 def scanner():
     directory = os.fsencode(path)
@@ -44,24 +46,27 @@ def scanner():
             tempo = librosa.beat.tempo(x, sr=sr)
             # print("Tempo: " + tempo)
 
-            dbPost(
+            db_post(
                 {
                     "fileName": filename,
                     "tempo": tempo[0]
                 }
             )
 
+
 def on_deleted(event):
     print(f"hey, {event.src_path} has been deleted!")
     scanner()
 
-def dbPost(payload):
-    print("Posting",payload)
-    r = requests.post("http://localhost:6001/api/tracks", data = payload)
+
+def db_post(payload):
+    print("Posting", payload)
+    r = requests.post("http://localhost:6001/api/tracks", data=payload)
     # preflight, checks = cors.preflight.prepare_preflight(r)
     print(r.text)
     print(r.headers)
     print(r)
+
 
 my_event_handler.on_created = on_created
 my_event_handler.on_deleted = on_deleted
@@ -75,6 +80,3 @@ try:
 except KeyboardInterrupt:
     my_observer.stop()
     my_observer.join()
-
-
-
