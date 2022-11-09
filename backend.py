@@ -10,8 +10,6 @@ import time
 from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler
 
-url = 'http://localhost:5000/api/msg' # URL for the local express API
-
 if __name__ == "__main__": # pattern matcher
     patterns = ["*"]
     ignore_patterns = None
@@ -27,33 +25,48 @@ my_observer.schedule(my_event_handler, path, recursive=go_recursively)
 
 def on_created(event):
     print(f"hey, {event.src_path} has been created!")
+    scanner()
 
-    directory = os.fsencode(directory_in_str)
+def scanner():
+    directory = os.fsencode(path)
+    print("Path: " + path)
 
     for file in os.listdir(directory):
         filename = os.fsdecode(file)
-        print("Analysing: " + filename)
+        if ".aif" in filename:
+            print("Analysing: " + filename)
+
+            full_name = path + "/" + filename
+            print("full_name: " + full_name)
+
+            x, sr = librosa.load(full_name)
+
+            tempo = librosa.beat.tempo(x, sr=sr)
+            # print("Tempo: " + tempo)
+
+            dbPost(
+                {
+                    "fileName": filename,
+                    "tempo": tempo[0]
+                }
+            )
+
+def on_deleted(event):
+    print(f"hey, {event.src_path} has been deleted!")
+    scanner()
 
 def dbPost(payload):
-    r = requests.post("http://localhost:6000/api/tracks", data = payload)
+    print("Posting",payload)
+    r = requests.post("http://localhost:6001/api/tracks", data = payload)
+    # preflight, checks = cors.preflight.prepare_preflight(r)
     print(r.text)
-
-def getCentroid(file):
-    print("Getting centroid for: " + file)
-
-def getBandwidth(file):
-    print("Getting bandwidth for: " + file)
-
-def getContrast(file):
-    print("Getting contrast for: " + file)
-
-def getTempo(file):
-    print("Getting tempo for: " + file)
-
-def getGenre(file):
-    print("Getting genre for: " + file)
+    print(r.headers)
+    print(r)
 
 my_event_handler.on_created = on_created
+my_event_handler.on_deleted = on_deleted
+
+scanner()
 
 my_observer.start()
 try:
