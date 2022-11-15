@@ -67,6 +67,8 @@ def db_post(payload):
     print(r.headers)
     print(r)
 
+    print("Post complete!")
+
 
 my_event_handler.on_created = on_created
 my_event_handler.on_deleted = on_deleted
