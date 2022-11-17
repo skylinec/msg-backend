@@ -1,3 +1,4 @@
+import pathlib
 from shutil import ignore_patterns
 import numpy
 import librosa
@@ -25,7 +26,7 @@ my_observer = Observer()
 my_observer.schedule(my_event_handler, path, recursive=go_recursively)
 
 def on_created(event):
-    clear_db()
+    # clear_db()
     print(f"hey, {event.src_path} has been created!")
     scanner()
 
@@ -35,83 +36,114 @@ def scanner():
 
     for file in os.listdir(directory):
         file_name = os.fsdecode(file)
+        headers = {'Content-Type': 'application/json'}
+
+        r = requests.post("http://localhost:6001/api/check_if_exists", json={
+            "fileName": file_name
+        }, headers=headers)
+
+        print("file_name",file_name)
+        print("DOES EXIST RESULT",r.text)
+        print("length", len(r.text))
+
         if ".aif" in file_name:
-            print("Analysing: " + file_name)
+            if len(r.text) <= 1:
+                print("Analysing: " + file_name)
 
-            full_name = path + "/" + file_name
-            print("full_name: " + full_name)
+                full_name = path + "/" + file_name
+                print("full_name: " + full_name)
 
-            x, sr = librosa.load(full_name)
+                x, sr = librosa.load(full_name)
 
-            tempo = librosa.beat.tempo(x, sr=sr)
-            # print("Tempo: " + tempo)
+                tempo = librosa.beat.tempo(x, sr=sr)
+                # print("Tempo: " + tempo)
 
-            genre = ""
+                genre = ""
 
-            contrast = librosa.feature.spectral_contrast(x, sr=sr)
-            chroma_stft = librosa.feature.chroma_stft(x, sr=sr)
-            rmse = librosa.feature.rms(x)
-            spec_cent = librosa.feature.spectral_centroid(x, sr=sr)
-            spec_bw = librosa.feature.spectral_bandwidth(x, sr=sr)
-            rolloff = librosa.feature.spectral_rolloff(x, sr=sr)
-            zcr = librosa.feature.zero_crossing_rate(x)
-            mfcc = librosa.feature.mfcc(x, sr=sr)
+                contrast = librosa.feature.spectral_contrast(x, sr=sr)
+                chroma_stft = librosa.feature.chroma_stft(x, sr=sr)
+                rmse = librosa.feature.rms(x)
+                spec_cent = librosa.feature.spectral_centroid(x, sr=sr)
+                spec_bw = librosa.feature.spectral_bandwidth(x, sr=sr)
+                rolloff = librosa.feature.spectral_rolloff(x, sr=sr)
+                zcr = librosa.feature.zero_crossing_rate(x)
+                mfcc = librosa.feature.mfcc(x, sr=sr)
 
-            chroma_stft_mean = int(numpy.mean(chroma_stft))
-            contrast_mean = int(numpy.mean(contrast))
-            rmse_mean = int(numpy.mean(rmse))
-            spec_cent_mean = int(numpy.mean(spec_cent))
-            spec_bw_mean = int(numpy.mean(spec_bw))
-            rolloff_mean = int(numpy.mean(rolloff))
-            zcr_mean = int(numpy.mean(zcr))
+                chroma_stft_mean = int(numpy.mean(chroma_stft))
+                contrast_mean = int(numpy.mean(contrast))
+                rmse_mean = int(numpy.mean(rmse))
+                spec_cent_mean = int(numpy.mean(spec_cent))
+                spec_bw_mean = int(numpy.mean(spec_bw))
+                rolloff_mean = int(numpy.mean(rolloff))
+                zcr_mean = int(numpy.mean(zcr))
 
-            adj_tempo = int(tempo[0])
+                adj_tempo = int(tempo[0])
 
-            db_post(
-                {
-                    "fileName": file_name,
-                    "genre": genre,
-                    "tempo": adj_tempo,
-                    "rmse": rmse_mean,
-                    "contrast": contrast_mean,
-                    "centroid": spec_cent_mean,
-                    "bandwidth": spec_bw_mean,
-                    "rolloff": rolloff_mean,
-                }
-            )
+                db_post(
+                    {
+                        "fileName": file_name,
+                        "genre": genre,
+                        "tempo": adj_tempo,
+                        "rmse": rmse_mean,
+                        "contrast": contrast_mean,
+                        "centroid": spec_cent_mean,
+                        "bandwidth": spec_bw_mean,
+                        "rolloff": rolloff_mean,
+                    }
+                )
 
+                # r = requests.post("http://localhost:6001/api/da")
+    
+    print("Done!")
+    r = requests.post("http://localhost:6001/api/da")
 
 def on_deleted(event):
     clear_db()
+    headers = {'Content-Type': 'application/json'}
+
     print(f"hey, {event.src_path} has been deleted!")
+
+    # file = pathlib.Path(event.src_path)
+
+    # r = requests.post("http://localhost:6001/api/remove", json={
+    #         "fileName": file.name
+    #     }, headers=headers)
+    
+    # r = requests.post("http://localhost:6001/api/da")
     scanner()
 
+def on_modified(event):
+    # clear_db()
+    print(f"hey, {event.src_path} has been modified!")
+    # scanner()
 
 def db_post(payload):
     print("Posting", payload)
     headers = {'Content-Type': 'application/json'}
     r = requests.post("http://localhost:6001/api/tracks", json=payload, headers=headers)
     # preflight, checks = cors.preflight.prepare_preflight(r)
-    print("Text", r.text)
-    print("Headers", r.headers)
-    print("Whole request",r)
+
+    # print("Text", r.text)
+    # print("Headers", r.headers)
+    # print("Whole request",r)
 
     print("Post complete!")
 
 def clear_db():
     r = requests.post("http://localhost:6001/api/cleartracks", json={})
 
-    print("Text", r.text)
-    print("Headers", r.headers)
-    print("Whole request",r)
+    # print("Text", r.text)
+    # print("Headers", r.headers)
+    # print("Whole request",r)
 
     print("Clear database complete!")
 
 
 my_event_handler.on_created = on_created
 my_event_handler.on_deleted = on_deleted
+# my_event_handler.on_modified = on_modified
 
-clear_db()
+# clear_db()
 
 scanner()
 
