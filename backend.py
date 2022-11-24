@@ -30,6 +30,8 @@ currently_scanning = False
 accepted_filetypes = ["mp3","wav","aif","flac"]
 
 def on_created(event):
+    print("Triggered on_created")
+
     if currently_scanning == False:
         # clear_db()
         print(f"hey, {event.src_path} has been created!")
@@ -68,12 +70,14 @@ def scanner():
                     time.sleep(1)
                     print("End of file error in loading",file_name)
                     print("Restarting scanner")
+                    clear_db()
                     scanner()
                     break
                 except FileNotFoundError:
                     time.sleep(1)
                     print("File not found error in loading",file_name)
                     print("Restarting scanner")
+                    clear_db()
                     scanner()
                     break         
 
@@ -93,7 +97,7 @@ def scanner():
                     mfcc = librosa.feature.mfcc(x, sr=sr)
 
                     chroma_stft_mean = int(numpy.mean(chroma_stft))
-                    contrast_mean = int(numpy.mean(contrast))
+                    contrast_mean = int(contrast[4][1])
                     rmse_mean = int(numpy.mean(rmse))
                     spec_cent_mean = int(numpy.mean(spec_cent))
                     spec_bw_mean = int(numpy.mean(spec_bw))
@@ -123,10 +127,18 @@ def scanner():
 
 def on_deleted(event):
     if currently_scanning == False:
-        clear_db()
         headers = {'Content-Type': 'application/json'}
 
         print(f"hey, {event.src_path} has been deleted!")
+
+        split_file_name = event.src_path.split("/")
+        removing_file = split_file_name[len(split_file_name)-1]
+
+        print("Removing",removing_file)
+
+        r = requests.post("http://localhost:6001/api/remove", json={
+            "fileName": removing_file
+        }, headers=headers)
 
         # file = pathlib.Path(event.src_path)
 
@@ -136,6 +148,7 @@ def on_deleted(event):
         
         # r = requests.post("http://localhost:6001/api/da")
         scanner()
+        r = requests.post("http://localhost:6001/api/da")
 
 def on_modified(event):
     # clear_db()
