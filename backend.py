@@ -41,21 +41,20 @@ accepted_filetypes = ["mp3","wav","aif","flac"]
 def round_to_nearest(n, s):
     return np.round(n,decimals = s)
 
-def create_track_similarity():
-    clear_similarities_db()
+def create_track_similarity(iter_val="off", mode="each"):
 
     # get track count
     r = requests.get("http://localhost:6001/api/get_tracks_count")
     r.raise_for_status()
     track_count_response = r.json()
     track_count = track_count_response["track_count"]
-    print("track_count", track_count)
+    # print("[SIMILARITY] track_count", track_count)
 
     # retrive tracks after processing in db
     tracks_r = requests.get("http://localhost:6001/api/tracks")
     tracks_r.raise_for_status()
     tracks_r_response = tracks_r.json()
-    print("tracks_r_response", tracks_r_response)
+    # print("[SIMILARITY] tracks_r_response", tracks_r_response)
 
     # create similarity comparison
     comparisons_to_make = [
@@ -66,7 +65,7 @@ def create_track_similarity():
         },
         {
             "type": "bandwidth",
-            "tolerance": -2,
+            "tolerance": -1,
             "colour": "#36BB2D"
         },
         {
@@ -84,16 +83,28 @@ def create_track_similarity():
     current_comparisons = []
 
     ## comparison logic
-    print("[SIMILARITIES] Starting comparison logic...")
+    print("[SIMILARITY] Starting comparison logic...")
+
+    if iter_val != "off":
+        if mode == "each":
+            s_loop = range(iter_val)
+        elif mode == "all":
+            s_loop = range(track_count)
+    else:
+        s_loop = range(track_count)
 
     for n in comparisons_to_make:
-        for i in range(track_count):
+        for i in s_loop:
             for j in range(track_count):
+                breaking = False
+
                 for x in current_comparisons:
                     if ((x['target'] == tracks_r_response[i]["_id"]) & (x['source'] == tracks_r_response[j]["_id"])):
                         print("[SIMILARITY] Similarity already exists in reverse, skipping...")
-                        # j.next()
-                        # continue
+                        breaking = True
+
+                if breaking == True:
+                    continue
                 
                 if(tracks_r_response[i] == tracks_r_response[j]):
                     print("[SIMILARITY] Tracks are the same, skipping...")
@@ -103,11 +114,11 @@ def create_track_similarity():
 
                     print("[SIMILARITY] Comparing",tracks_r_response[i]['fileName'],"to",tracks_r_response[j]['fileName'])
 
-                    print("[SIMILARITY] Comparing rounded centroid",round_to_nearest(tracks_r_response[i][comp], rounding_decimals),"to",round_to_nearest(tracks_r_response[j][comp], rounding_decimals))
+                    print("[SIMILARITY] Comparing rounded " + comp + " ",round_to_nearest(tracks_r_response[i][comp], rounding_decimals),"to",round_to_nearest(tracks_r_response[j][comp], rounding_decimals))
 
                     if(round_to_nearest(tracks_r_response[i][comp], rounding_decimals) ==
                         round_to_nearest(tracks_r_response[j][comp], rounding_decimals)):
-                        print(comp,"match")
+                        print("[SIMILARITY]",comp,"match")
 
                         composed_similarity = {
                             "id": comp + " " + tracks_r_response[i]["fileName"] + " " + tracks_r_response[j]["fileName"],
@@ -120,13 +131,14 @@ def create_track_similarity():
                         db_post_similarity(composed_similarity)
                         current_comparisons.append(composed_similarity)
 
+    print("[SIMILARITY] Finished comparison logic: mode",mode,"and iter_val",iter_val)
+
 def on_created(event):
     print("Triggered on_created")
-    create_track_similarity()
 
     if currently_scanning == False:
         # clear_db()
-        print(f"hey, {event.src_path} has been created!")
+        print(f"[TRACK] hey, {event.src_path} has been created!")
         scanner()
 
 def scanner():
@@ -134,8 +146,12 @@ def scanner():
 
     current_tracks = {}
 
+    clear_similarities_db()
+
     directory = os.fsencode(path)
     print("Path: " + path)
+
+    incr = 0
 
     for file in os.listdir(directory):
         file_name = os.fsdecode(file)
@@ -145,32 +161,32 @@ def scanner():
             "fileName": file_name
         }, headers=headers)
 
-        print("file_name",file_name)
-        print("DOES EXIST RESULT",r.text)
-        print("length", len(r.text))
+        print("[TRACK] file_name",file_name)
+        print("[TRACK] DOES EXIST RESULT",r.text)
+        print("[TRACK] length", len(r.text))
 
         split_file_name = file_name.split(".")
 
         if split_file_name[len(split_file_name)-1] in accepted_filetypes:
             if len(r.text) <= 1:
-                print("Analysing: " + file_name)
+                print("[TRACK] Analysing: " + file_name)
 
                 full_name = path + "/" + file_name
-                print("full_name: " + full_name) 
+                print("[TRACK] full_name: " + full_name) 
 
                 try:
                     x, sr = librosa.load(full_name)
                 except EOFError:
                     time.sleep(1)
-                    print("End of file error in loading",file_name)
-                    print("Restarting scanner")
+                    print("[TRACK] End of file error in loading",file_name)
+                    print("[TRACK] Restarting scanner")
                     clear_tracks_db()
                     scanner()
                     break
                 except FileNotFoundError:
                     time.sleep(1)
-                    print("File not found error in loading",file_name)
-                    print("Restarting scanner")
+                    print("[TRACK] File not found error in loading",file_name)
+                    print("[TRACK] Restarting scanner")
                     clear_tracks_db()
                     scanner()
                     break         
@@ -211,6 +227,11 @@ def scanner():
                         "rolloff": rolloff_mean,
                     })
 
+                    print('[SIMILARITY] Creating track similarities for track with index',incr)
+                    create_track_similarity(incr, mode="each")
+
+                    incr = incr + 1
+
                     # current_tracks.append({
                     #         "fileName": file_name,
                     #         "genre": genre,
@@ -225,10 +246,11 @@ def scanner():
                     r = requests.post("http://localhost:6001/api/da")
     
     print("Done!")
+    # create_track_similarity(mode="all")
 
     # r = requests.post("http://localhost:6001/api/da")
-
-    create_track_similarity()
+    
+    # create_track_similarity()
     r = requests.post("http://localhost:6001/api/da")
 
     currently_scanning = False
@@ -255,6 +277,7 @@ def on_deleted(event):
         #     }, headers=headers)
         
         # r = requests.post("http://localhost:6001/api/da")
+
         scanner()
         r = requests.post("http://localhost:6001/api/da")
 
@@ -264,7 +287,7 @@ def on_modified(event):
     # scanner()
 
 def db_post_track(payload):
-    print("Posting", payload)
+    print("[TRACK] Posting", payload)
     headers = {'Content-Type': 'application/json'}
     r = requests.post("http://localhost:6001/api/tracks", json=payload, headers=headers)
     # preflight, checks = cors.preflight.prepare_preflight(r)
@@ -276,7 +299,7 @@ def db_post_track(payload):
     print("[TRACK] Post complete!")
 
 def db_post_similarity(payload):
-    print("Posting", payload)
+    print("[SIMILARITY] Posting", payload)
     headers = {'Content-Type': 'application/json'}
     r = requests.post("http://localhost:6001/api/similarities", json=payload, headers=headers)
     # preflight, checks = cors.preflight.prepare_preflight(r)
@@ -294,7 +317,7 @@ def clear_tracks_db():
     # print("Headers", r.headers)
     # print("Whole request",r)
 
-    print("[TRACKS] Clear database complete!")
+    print("[TRACK] Clear database complete!")
 
 def clear_similarities_db():
     r = requests.post("http://localhost:6001/api/clear_similarities", json={})
@@ -303,12 +326,13 @@ def clear_similarities_db():
     # print("Headers", r.headers)
     # print("Whole request",r)
 
-    print("[TRACKS] Clear database complete!")
+    print("[SIMILARITY] Clear database complete!")
 
 my_event_handler.on_created = on_created
 my_event_handler.on_deleted = on_deleted
 # my_event_handler.on_modified = on_modified
 
+clear_similarities_db()
 clear_tracks_db()
 r = requests.post("http://localhost:6001/api/da")
 
