@@ -1,0 +1,31 @@
+{
+    {
+        "type": "centroid",
+        "tolerance": -1,
+        "sim": 12,
+        "colour": "#DE3C1A"
+    }
+    {
+        "type": "contrast",
+        "tolerance": -,
+        "sim": 12,
+        "colour": "#D5DE14"
+    }
+    {
+        "type": "bandwidth",
+        "tolerance": -1,
+        "sim": 10,
+        "colour": "#36BB2D"
+    }
+    {
+        "type": "rolloff",
+        "tolerance": -2,
+        "sim": 15,
+        "colour": "#14DED2"
+    }
+    {
+        "type": "tempo",
+        "tolerance": 0,
+        "colour": "#DE14CF"
+    }
+}
