@@ -59,7 +59,7 @@ my_observer.schedule(my_event_handler, path, recursive=go_recursively)
 
 currently_scanning = False
 
-accepted_filetypes = ["mp3","wav","aif","flac"]
+accepted_filetypes = ["mp3","wav","aif","flac", "aiff"]
 
 def round_to_nearest(n, s):
     return np.round(n,decimals = s)
@@ -69,7 +69,7 @@ def post_status():
 
     status_string = "STATUS?" + current_task + ": " + str(total_task_done) + " / " + str(total_task_amt) + " (" + current_comp + ")"
 
-    print("SENDING",status_string)
+    # print("SENDING",status_string)
 
     r = requests.post("http://localhost:6001/api/send_status_text", json={
             "statusText": status_string
@@ -473,8 +473,8 @@ def create_similarity_matrix(iter_val="off", mode="each"):
                     similarity_score_a = 0
                     similarity_score_b = 0
 
-                    start = 1000
-                    dista = 2000
+                    start = 0
+                    dista = 9
                     leng = start+dista
 
                     # print("fff",tracks_r_response[i][comp].shape)
@@ -484,7 +484,7 @@ def create_similarity_matrix(iter_val="off", mode="each"):
                             print("[SIMILARITY]",comp,"match")
 
                             composed_similarity = {
-                                "id": comp + " " + tracks_r_db[i]["fileName"] + " " + tracks_r_db[j]["fileName"],
+                                "id": "'" + comp + "'" +  " " + "'" + tracks_r_db[i]["fileName"] + "'" +  " " + "'" + tracks_r_db[j]["fileName"] + "'",
                                 "source": tracks_r_db[i]["_id"],
                                 "target": tracks_r_db[j]["_id"],
                                 "label": comp,
@@ -548,7 +548,7 @@ def create_similarity_matrix(iter_val="off", mode="each"):
                                 print("[SIMILARITY]",comp,"match")
 
                                 composed_similarity = {
-                                    "id": comp + " " + tracks_r_db[i]["fileName"] + " " + tracks_r_db[j]["fileName"],
+                                    "id": "'" + comp + "'" +  " " + "'" + tracks_r_db[i]["fileName"] + "'" +  " " + "'" + tracks_r_db[j]["fileName"] + "'",
                                     "source": tracks_r_db[i]["_id"],
                                     "target": tracks_r_db[j]["_id"],
                                     "label": comp,
@@ -571,9 +571,9 @@ def create_similarity_matrix(iter_val="off", mode="each"):
             s1.append(s2)
             # total_task_done = total_task_done + 1
             # post_status()
-        print("[SIMILARITY] s1...")
+        # print("[SIMILARITY] s1...")
     current_comparisons.append(s1)
-    print("[SIMILARITY] curr...")
+    # print("[SIMILARITY] curr...")
 
     current_comp = ""
 
@@ -621,7 +621,7 @@ try:
             scanner()
 
             r = requests.post("http://localhost:6001/api/da")
-            my_observer.start()
+            # my_observer.start()
         # time.sleep(1)
         # break
         # break
