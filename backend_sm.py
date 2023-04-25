@@ -59,7 +59,7 @@ my_observer.schedule(my_event_handler, path, recursive=go_recursively)
 
 currently_scanning = False
 
-accepted_filetypes = ["mp3","wav","aif","flac", "aiff"]
+accepted_filetypes = ["mp3","wav","aif","flac", "aiff","m4a"]
 
 def round_to_nearest(n, s):
     return np.round(n,decimals = s)
