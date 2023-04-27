@@ -164,4 +164,4 @@ cython_debug/
 # Project specific extras
 tracks/
 
-.DS_Store/
+.DS_Store
